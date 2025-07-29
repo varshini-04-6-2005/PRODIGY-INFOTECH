@@ -1,0 +1,39 @@
+import random
+
+def build_markov_chain(text, n=1):
+    words = text.split()
+    markov_chain = {}
+
+    for i in range(len(words) - n):
+        key = tuple(words[i:i+n])  # Current state (n-gram)
+        next_word = words[i + n]   # Next word
+        if key in markov_chain:
+            markov_chain[key].append(next_word)
+        else:
+            markov_chain[key] = [next_word]
+
+    return markov_chain
+def generate_text(chain, n=1, length=50):
+    start = random.choice(list(chain.keys()))
+    output = list(start)
+
+    for _ in range(length):
+        current = tuple(output[-n:])
+        next_words = chain.get(current)
+        if not next_words:
+            break
+        next_word = random.choice(next_words)
+        output.append(next_word)
+
+    return ' '.join(output)
+text = """
+The sun rose gently over the hills. The morning light painted the sky with soft hues of orange and pink.
+Birds chirped as the world slowly woke up. The cottage by the hill began to stir.
+"""
+
+
+markov_chain = build_markov_chain(text, n=2)  # Try n=1 or 2
+
+
+generated = generate_text(markov_chain, n=2, length=30)
+print(" Generated Text:\n", generated)
