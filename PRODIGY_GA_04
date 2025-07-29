@@ -1,0 +1,49 @@
+!pip install transformers datasets accelerate
+
+from transformers import GPT2Tokenizer, GPT2LMHeadModel, DataCollatorForLanguageModeling, Trainer, TrainingArguments
+from datasets import load_dataset, Dataset
+import torch
+
+with open("sample3.txt", "r", encoding="utf-8") as f:
+    text_data = f.read()
+
+dataset = Dataset.from_dict({"text": [text_data]})
+model_name = "gpt2"  
+tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+model = GPT2LMHeadModel.from_pretrained(model_name)
+
+
+tokenizer.pad_token = tokenizer.eos_token
+model.resize_token_embeddings(len(tokenizer))
+def tokenize_function(examples):
+    return tokenizer(examples["text"], truncation=True, padding="max_length", max_length=512)
+
+tokenized_dataset = dataset.map(tokenize_function, batched=True, remove_columns=["text"])
+data_collator = DataCollatorForLanguageModeling(
+    tokenizer=tokenizer, mlm=False
+)
+training_args = TrainingArguments(
+    output_dir="./gpt2-finetuned",
+    overwrite_output_dir=True,
+    per_device_train_batch_size=2,
+    num_train_epochs=3,
+    logging_steps=10,
+    save_steps=500,
+    save_total_limit=2,
+    prediction_loss_only=True,
+)
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=tokenized_dataset,
+    tokenizer=tokenizer,
+    data_collator=data_collator,
+)
+trainer.train()
+trainer.save_model("fine-tuned-gpt2")
+tokenizer.save_pretrained("fine-tuned-gpt2")
+
+from transformers import pipeline
+
+text_generator = pipeline("text-generation", model="fine-tuned-gpt2", tokenizer=tokenizer)
+text_generator("The sun rose gently over the", max_length=100, num_return_sequences=1)
